@@ -9,13 +9,10 @@ travel between different gate, any given interval of time
 import pandas as pd
 import numpy as np
 from datetime import date, datetime
-from bokeh.plotting import ColumnDataSource, figure, show, output_file, curdoc
-from bokeh.palettes import Spectral9
-from bokeh.models import CustomJS
+from bokeh.plotting import ColumnDataSource, figure, curdoc
 from collections import Counter
 from bokeh.layouts import column
 from bokeh.core.properties import value
-import matplotlib.pyplot as plt
 from bokeh.models import HoverTool
 from bokeh.models.widgets import DateRangeSlider
 
@@ -47,7 +44,7 @@ end_mask = '2016-04-20'
 
 mask = (data['Timestamp'] >= start_mask) & (data['Timestamp'] <= end_mask)
 time_dude = data.loc[mask]
-print(time_dude)
+
 for iter, car_type in enumerate(all_car_types):
     df = time_dude[time_dude['car-type'] == car_type]
     gate_values = df['gate-name'].values
@@ -110,7 +107,8 @@ def date_range_update(attrname, old, new):
 
 
 p = figure(plot_width=plot_width, plot_height=plot_height,
-           x_range=labels, tools=[hover])
+           x_range=labels, tools=[hover, 'box_zoom',
+                                  'reset'])
 p.vbar_stack(all_car_types,
              x='Gate Names',
              width=width,
@@ -125,5 +123,3 @@ p.legend.location = 'top_left'
 p.legend.click_policy = 'mute'
 date_slider.on_change('value', date_range_update)
 curdoc().add_root(column(p, date_slider))
-
-, 48, 51, 54, 361, 255, 66, 471, 57
