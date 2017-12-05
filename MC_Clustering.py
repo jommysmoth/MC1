@@ -5,7 +5,7 @@ Attempting to cluster the data for finding cars
 exhibiting behavior outside of the norm labelsl.
 """
 
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 from collections import Counter
 
 import numpy as np
@@ -17,8 +17,6 @@ from bokeh.core.properties import value
 import pandas as pd
 from datetime import datetime
 import time
-
-# km = DBSCAN(eps=5, min_samples=2)
 
 km = KMeans(n_clusters=5)
 
@@ -68,6 +66,7 @@ df['Label'] = y_cluster
 clust_num = np.unique(y_cluster)
 print(len(clust_num))
 if len(clust_num) == 1:
+    print('only found outliers')
     exit()
 
 mask = df['Label'] == -1
