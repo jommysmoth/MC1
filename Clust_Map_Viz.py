@@ -40,7 +40,7 @@ doc = curdoc()
 source_map = ColumnDataSource()
 
 
-p = figure(title='Not  Sure Yet', plot_width=1200, plot_height=800,
+p = figure(title='Not  Sure Yet', plot_width=800, plot_height=500,
            y_range=gates)
 
 
@@ -138,7 +138,7 @@ in_Slider = Slider(start=0,
                    step=1,
                    title='Which Point to See')
 
-p2 = figure(plot_height=800, plot_width=800, x_range=(0, 2), y_range=(0, 2),
+p2 = figure(plot_height=500, plot_width=500, x_range=(0, 2), y_range=(0, 2),
             match_aspect=True, tools=[hover])
 
 p2.image_url(url=['https://raw.githubusercontent.com/john-guerra/vastChallenge2017'
@@ -162,6 +162,14 @@ animation_count = 0
 
 df_callback = source.to_df()
 
+# Filling with useless data
+data = dict([('X', -source.data['X']),
+             ('Y', -source.data['Y'])])
+source_new = ColumnDataSource(data)
+
+holder1 = -2
+holder2 = -2
+
 
 def update(attr, new, old):
     """
@@ -178,24 +186,20 @@ def update(attr, new, old):
     seq_str_y = 'Gate ' + str(seq_val)
     source_map.data['X'] = source_map.data[seq_str_x]
     source_map.data['Y'] = source_map.data[seq_str_y]
-    """
-    x = []
-    y = []
-    x.append(source.data['X'][in_val])
-    y.append(source.data['Y'][in_val])
-    x.append(0)
-    y.append(0)
-    print('Here')
-    data = dict([('X', x),
-                ('Y', y)])
-    print('No Here')
-    source_new = ColumnDataSource(data)
-    print('Could be here')
-    p2.circle(x='X', y='Y', source=source_new,
-              size=15, color='purple')
-    """
-    df_callback
 
+    mask_val = source_map.data['Y'][in_val]
+
+    mask = df_callback['Names_Real'] == mask_val
+    df_out = df_callback.loc[mask]
+
+    source_new.data['X'] = [df_out['X'].values[0], -2]
+    source_new.data['Y'] = [df_out['Y'].values[0], -2]
+    source_new.data['X_line'] = [df_out['X'].values[0], holder1]
+    source_new.data['Y_line'] = [df_out['Y'].values[0], holder2]
+    if in_val != 0:
+      p2.line(x='X', y='Y', source=source_new)
+
+p2.circle(x='X', y='Y', source=source_new, size=15, color='purple')
 
 seq_Slider.on_change('value', update)
 in_Slider.on_change('value', update)
