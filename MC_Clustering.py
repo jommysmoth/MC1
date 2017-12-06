@@ -3,6 +3,11 @@ Clustering.
 
 Attempting to cluster the data for finding cars
 exhibiting behavior outside of the norm labelsl.
+Ended up using KMeans Clustering, but is made so
+that other clustering methods that give outliers
+can be used (in most scenearios the outliers were
+the only useless information, so this code only
+saves the labeled clusters)
 """
 
 from sklearn.cluster import KMeans
@@ -10,7 +15,6 @@ from collections import Counter
 
 import numpy as np
 
-from bokeh.layouts import row, column
 from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure, show
 from bokeh.core.properties import value
@@ -67,7 +71,7 @@ y_cluster = km.fit_predict(data_cluster_test.values)
 
 df['Label'] = y_cluster
 clust_num = np.unique(y_cluster)
-# print(len(clust_num))
+df.to_csv('Dataframe_Labels.csv')
 
 if len(clust_num) == 1:
     print('only found outliers')
@@ -112,30 +116,12 @@ for x in car_type_list:
     source.add(counts / len_car_df, name=x)
 
 # Setting to Interesting point
-mask_select = (df['car-type'] == '4') & (df['Label'] == 3)
-df_new_viz = df.loc[mask_select]
-select_car_ar = np.unique(df_new_viz['car-id'].as_matrix())
 
-
-source_map = ColumnDataSource()
-for it, id in enumerate(select_car_ar):
-    # Purposefully full dataframe of car (Later could highlight cluster
-    # only actions)
-    mask_car = df['car-id'] == id
-    df_temp = df.loc[mask_car]
-    map_data_time = df['Timestamp'].values
-    map_data_gate = df['gate-name'].values
-    source_map.add(map_data_time, name='Timestamp ' + id)
-    source_map.add(map_data_gate, name='Gate ' + id)
 
 p = figure(title='Labeled Clusters Sorted by Car Type (Normalized)',
            plot_height=600, plot_width=1000, x_range=Cluster_Names,
            tools=['box_select', 'reset', 'box_zoom'])
 
-p_map = figure(title='Not  Sure Yet', plot_width=500, plot_height=1000)
-
-p_map.line(x='Timestamp ' + id, y='Gate ' + id,
-           source=source_map)
 
 p.vbar_stack(car_type_list,
              x='Real_Cars',
@@ -150,4 +136,7 @@ p.vbar_stack(car_type_list,
 p.legend.location = 'top_left'
 p.legend.click_policy = 'mute'
 p.xaxis.major_label_orientation = 1.2
-show(row(p, p_map))
+
+
+df.to_csv()
+show(p)
