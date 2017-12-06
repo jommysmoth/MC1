@@ -11,11 +11,10 @@ from PIL import Image
 
 from collections import Counter
 
-from bokeh.layouts import row
+from bokeh.layouts import row, column
 from bokeh.models import ColumnDataSource, DatetimeTickFormatter, HoverTool
-from bokeh.plotting import figure, show, curdoc
-
-from concurrent.futures import ThreadPoolExecutor
+from bokeh.plotting import figure, curdoc
+from bokeh.models.widgets import Slider
 
 import pandas as pd
 
@@ -37,8 +36,6 @@ df_new_viz = df.loc[mask_select]
 select_car_ar = np.unique(df_new_viz['car-id'].as_matrix())
 
 doc = curdoc()
-executor = ThreadPoolExecutor(max_workers=2)
-
 
 source_map = ColumnDataSource()
 
@@ -56,11 +53,11 @@ for it, id in enumerate(select_car_ar):
     map_data_gate = df_temp['gate-name'].values
     source_map.add(map_data_time, name='Timestamp ' + str(it))
     source_map.add(map_data_gate, name='Gate ' + str(it))
+source_map.add(source_map.data['Timestamp 0'], name='X')
+source_map.add(source_map.data['Gate 0'], name='Y')
 
-p.line(x='Timestamp ' + str(it), y='Gate ' + str(it), source=source_map)
-p.circle(x='Timestamp ' + str(it), y='Gate ' + str(it), source=source_map,
-         size=10, color='red')
-
+p.line(x='X', y='Y', source=source_map)
+p.circle(x='X', y='Y', source=source_map, size=10, color='red')
 
 im_url = 'Lekagul Roadways.bmp'
 im = Image.open(im_url)
@@ -129,6 +126,17 @@ data = dict([('X', x_list), ('Y', y_list),
 
 source = ColumnDataSource(data)
 
+seq_Slider = Slider(start=0,
+                    end=it,
+                    value=0,
+                    step=1,
+                    title='Which Instance to Monitor')
+
+in_Slider = Slider(start=0,
+                   end=13,
+                   value=0,
+                   step=1,
+                   title='Which Point to See')
 
 p2 = figure(plot_height=800, plot_width=800, x_range=(0, 2), y_range=(0, 2),
             match_aspect=True, tools=[hover])
@@ -152,8 +160,10 @@ p2.yaxis.major_tick_line_color = None
 p2.yaxis.minor_tick_line_color = None
 animation_count = 0
 
+df_callback = source.to_df()
 
-def update():
+
+def update(attr, new, old):
     """
     Animation Update.
 
@@ -162,14 +172,31 @@ def update():
     the map over all of the given dates of
     data.
     """
-    print(source_map.data['Timestamp 1'][2])
-doc.add_root(row(p2, p))
-doc.add_periodic_callback(update, 1200)
-"""
-    Animation Update.
+    seq_val = int(seq_Slider.value)
+    in_val = int(in_Slider.value)
+    seq_str_x = 'Timestamp ' + str(seq_val)
+    seq_str_y = 'Gate ' + str(seq_val)
+    source_map.data['X'] = source_map.data[seq_str_x]
+    source_map.data['Y'] = source_map.data[seq_str_y]
+    """
+    x = []
+    y = []
+    x.append(source.data['X'][in_val])
+    y.append(source.data['Y'][in_val])
+    x.append(0)
+    y.append(0)
+    print('Here')
+    data = dict([('X', x),
+                ('Y', y)])
+    print('No Here')
+    source_new = ColumnDataSource(data)
+    print('Could be here')
+    p2.circle(x='X', y='Y', source=source_new,
+              size=15, color='purple')
+    """
+    df_callback
 
-    Should be able to update both graphs in
-    order to show how the vehicle moves over
-    the map over all of the given dates of
-    data.
-"""
+
+seq_Slider.on_change('value', update)
+in_Slider.on_change('value', update)
+doc.add_root(column(row(p2, p), seq_Slider, in_Slider))
