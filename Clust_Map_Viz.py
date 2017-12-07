@@ -13,6 +13,7 @@ from collections import Counter
 
 from bokeh.layouts import row, column
 from bokeh.models import ColumnDataSource, DatetimeTickFormatter, HoverTool
+from bokeh.models import Span, Label
 from bokeh.plotting import figure, curdoc
 from bokeh.models.widgets import Slider
 
@@ -31,7 +32,10 @@ common_cars = Counter(df['car-id']).most_common(num_most_common)
 id_tag, counter_value = zip(*common_cars)
 df = df[df['car-id'].isin(id_tag)]
 
-mask_select = (df['car-type'] == '4') & (df['Label'] == 3)
+car_type_for_ob = '4'
+Label_for_insp = 3
+
+mask_select = (df['car-type'] == car_type_for_ob) & (df['Label'] == Label_for_insp)
 df_new_viz = df.loc[mask_select]
 select_car_ar = np.unique(df_new_viz['car-id'].as_matrix())
 
@@ -40,10 +44,10 @@ doc = curdoc()
 source_map = ColumnDataSource()
 
 
-p = figure(title='Not  Sure Yet', plot_width=800, plot_height=500,
-           y_range=gates)
+p = figure(title='Datetime Data of Each Vehicle Id \n Car Type: \n Cluster Label: ',
+           plot_width=800, plot_height=500, y_range=gates)
 
-
+check_max = []
 for it, id in enumerate(select_car_ar):
     # Purposefully full dataframe of car (Later could highlight cluster
     # only actions)
@@ -51,6 +55,7 @@ for it, id in enumerate(select_car_ar):
     df_temp = df.loc[mask_car]
     map_data_time = df_temp['Timestamp'].values
     map_data_gate = df_temp['gate-name'].values
+    check_max.append(len(map_data_gate))
     source_map.add(map_data_time, name='Timestamp ' + str(it))
     source_map.add(map_data_gate, name='Gate ' + str(it))
 source_map.add(source_map.data['Timestamp 0'], name='X')
@@ -133,25 +138,19 @@ seq_Slider = Slider(start=0,
                     title='Which Instance to Monitor')
 
 in_Slider = Slider(start=0,
-                   end=13,
+                   end=max(check_max) - 1,
                    value=0,
                    step=1,
                    title='Which Point to See')
 
 p2 = figure(plot_height=500, plot_width=500, x_range=(0, 2), y_range=(0, 2),
-            match_aspect=True, tools=[hover])
+            match_aspect=True, tools=[hover], title='Lekagul Preserve (Sensor Data Shown)')
 
 p2.image_url(url=['https://raw.githubusercontent.com/john-guerra/vastChallenge2017'
                   '_example/master/minichallenge_1/Lekagul%20Roadways.bmp'], x=0, y=0, w=2, h=2,
              angle=np.pi / 2)
 p2.circle(x='X', y='Y', source=source, size=10,
           alpha=0.9, color='Color')
-
-p.xaxis.formatter = DatetimeTickFormatter(minutes=["%B %d %H:%M:%S"],
-                                          hours=["%B %d %H:%M:%S"],
-                                          days=["%d %B %Y"],
-                                          months=["%d %B %Y"],
-                                          years=["%d %B %Y"])
 
 p2.xaxis.major_tick_line_color = None
 p2.xaxis.minor_tick_line_color = None
@@ -162,23 +161,25 @@ animation_count = 0
 
 df_callback = source.to_df()
 
-# Filling with useless data
-data = dict([('X', -source.data['X']),
-             ('Y', -source.data['Y'])])
-source_new = ColumnDataSource(data)
+start_val = source_map.data['Y'][0]
+x1 = float(df_callback['X'].loc[df_callback['Names_Real'] == start_val].values)
+x2 = float(df_callback['X'].loc[df_callback['Names_Real'] == start_val].values)
+y1 = float(df_callback['Y'].loc[df_callback['Names_Real'] == start_val].values)
+y2 = float(df_callback['Y'].loc[df_callback['Names_Real'] == start_val].values)
 
-holder1 = -2
-holder2 = -2
+data = dict([('X', [x1, x2]),
+             ('Y', [y1, y2])])
+source_new = ColumnDataSource(data)
 
 
 def update(attr, new, old):
     """
-    Animation Update.
+    Slider Update.
 
-    Should be able to update both graphs in
-    order to show how the vehicle moves over
-    the map over all of the given dates of
-    data.
+    Lets user chose which instance of vehicle travelling, in
+    order to use the secondary slider to observe the path of
+    specific vehicle over map overlay via sensor data over time
+    (scale given on secondary graph)
     """
     seq_val = int(seq_Slider.value)
     in_val = int(in_Slider.value)
@@ -186,20 +187,51 @@ def update(attr, new, old):
     seq_str_y = 'Gate ' + str(seq_val)
     source_map.data['X'] = source_map.data[seq_str_x]
     source_map.data['Y'] = source_map.data[seq_str_y]
-
-    mask_val = source_map.data['Y'][in_val]
-
-    mask = df_callback['Names_Real'] == mask_val
-    df_out = df_callback.loc[mask]
-
-    source_new.data['X'] = [df_out['X'].values[0], -2]
-    source_new.data['Y'] = [df_out['Y'].values[0], -2]
-    source_new.data['X_line'] = [df_out['X'].values[0], holder1]
-    source_new.data['Y_line'] = [df_out['Y'].values[0], holder2]
+    mask_val = []
+    for mask_it in range(in_val + 1):
+        mask_val.append(source_map.data['Y'][mask_it])
+    df_out = df_callback[df_callback['Names_Real'].isin(mask_val)]
+    x1 = float(df_out['X'].loc[df_out['Names_Real'] == mask_val[0]].values)
+    x2 = float(df_out['X'].loc[df_out['Names_Real'] == mask_val[in_val]].values)
+    y1 = float(df_out['Y'].loc[df_out['Names_Real'] == mask_val[0]].values)
+    y2 = float(df_out['Y'].loc[df_out['Names_Real'] == mask_val[in_val]].values)
+    out_x = [x1, x2]
+    out_y = [y1, y2]
+    source_new.data['X'] = out_x
+    source_new.data['Y'] = out_y
+    start_date = source_map.data['X'][in_val]
+    start_date = float(start_date)
+    highlight_start.location = start_date
+    label.x = start_date
     if in_val != 0:
-      p2.line(x='X', y='Y', source=source_new)
+        x1 = float(df_out['X'].loc[df_out['Names_Real'] == mask_val[in_val]].values)
+        x2 = float(df_out['X'].loc[df_out['Names_Real'] == mask_val[in_val - 1]].values)
+        y1 = float(df_out['Y'].loc[df_out['Names_Real'] == mask_val[in_val]].values)
+        y2 = float(df_out['Y'].loc[df_out['Names_Real'] == mask_val[in_val - 1]].values)
+        out_x = [x1, x2]
+        out_y = [y1, y2]
+        p2.line(x=out_x, y=out_y, line_color='purple', line_width=6)
+
 
 p2.circle(x='X', y='Y', source=source_new, size=15, color='purple')
+
+start_date = source_map.data['X'][0]
+start_date = float(start_date) / 1000000
+
+highlight_start = Span(location=start_date,
+                       dimension='height', line_color='green',
+                       line_dash='dashed', line_width=3)
+
+label = Label(x=start_date, y=0, text='Sensor')
+
+p.add_layout(highlight_start)
+p.add_layout(label)
+
+p.xaxis.formatter = DatetimeTickFormatter(minutes=["%B %d %H:%M:%S"],
+                                          hours=["%B %d %H:%M:%S"],
+                                          days=["%d %B %Y"],
+                                          months=["%d %B %Y"],
+                                          years=["%d %B %Y"])
 
 seq_Slider.on_change('value', update)
 in_Slider.on_change('value', update)
